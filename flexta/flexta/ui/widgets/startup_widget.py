@@ -1,111 +1,61 @@
 from __future__ import annotations
 
-from typing import Iterable, Optional
+import tkinter as tk
+from tkinter import ttk
 
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtWidgets import (
-    QComboBox,
-    QGroupBox,
-    QHBoxLayout,
-    QLabel,
-    QListWidget,
-    QListWidgetItem,
-    QPushButton,
-    QSpacerItem,
-    QVBoxLayout,
-    QWidget,
-    QSizePolicy,
-)
+from flexta.utils.file_utils import create_project
 
-from flexta.database import settings_db
 
-class StartupWidget(QWidget):
-    create_project_requested = Signal()
-    open_project_requested = Signal()
-    template_selected = Signal(str)
-    recent_project_requested = Signal(str)
+class StartupWidget(ttk.Frame):
+    def __init__(self, master: tk.Misc) -> None:
+        super().__init__(master, padding=24)
+        self.project_name_var = tk.StringVar()
+        self.location_var = tk.StringVar(value="~/flexta-projects")
+        self.status_var = tk.StringVar()
 
-    def __init__(self, parent: Optional[QWidget] = None, show_open_button: bool = True) -> None:
-        super().__init__(parent)
-        self._show_open_button = show_open_button
-        self._recent_placeholder = QListWidgetItem("No recent projects")
-        self._build_ui()
-        self.refresh_recent_projects()
+        self._build()
 
-    def _build_ui(self) -> None:
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(32, 32, 32, 32)
-        layout.setSpacing(24)
+    def _build(self) -> None:
+        title = ttk.Label(self, text="Start a new project", font=("Segoe UI", 18, "bold"))
+        title.grid(row=0, column=0, columnspan=2, sticky="w")
 
-        title = QLabel("Welcome to Flexta")
-        title.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        title.setStyleSheet("font-size: 28px; font-weight: 600;")
-        layout.addWidget(title)
+        subtitle = ttk.Label(
+            self,
+            text="Create a simple HTML/CSS/JS project to get started with Flexta.",
+            foreground="#6b7280",
+        )
+        subtitle.grid(row=1, column=0, columnspan=2, sticky="w", pady=(4, 16))
 
-        actions_layout = QHBoxLayout()
-        self.create_button = QPushButton("Create Project")
-        self.create_button.clicked.connect(self.create_project_requested)
-        self.create_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        actions_layout.addWidget(self.create_button)
+        name_label = ttk.Label(self, text="Project name")
+        name_label.grid(row=2, column=0, sticky="w")
+        name_entry = ttk.Entry(self, textvariable=self.project_name_var, width=40)
+        name_entry.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(4, 12))
 
-        if self._show_open_button:
-            self.open_button = QPushButton("Open Project")
-            self.open_button.clicked.connect(self.open_project_requested)
-            self.open_button.setCursor(Qt.CursorShape.PointingHandCursor)
-            actions_layout.addWidget(self.open_button)
+        location_label = ttk.Label(self, text="Location")
+        location_label.grid(row=4, column=0, sticky="w")
+        location_entry = ttk.Entry(self, textvariable=self.location_var, width=40)
+        location_entry.grid(row=5, column=0, columnspan=2, sticky="ew", pady=(4, 12))
 
-        actions_layout.addItem(QSpacerItem(0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
-        layout.addLayout(actions_layout)
+        create_button = ttk.Button(self, text="Create project", command=self._handle_create)
+        create_button.grid(row=6, column=0, sticky="w")
 
-        template_group = QGroupBox("Template")
-        template_layout = QHBoxLayout(template_group)
-        template_layout.setContentsMargins(16, 12, 16, 12)
-        template_label = QLabel("Choose a template:")
-        self.template_picker = QComboBox()
-        self.template_picker.addItems(["Blank", "Web App", "CLI Tool", "Library"])
-        self.template_picker.currentTextChanged.connect(self.template_selected)
-        template_layout.addWidget(template_label)
-        template_layout.addWidget(self.template_picker, 1)
-        layout.addWidget(template_group)
+        status_label = ttk.Label(self, textvariable=self.status_var, foreground="#ef4444")
+        status_label.grid(row=7, column=0, columnspan=2, sticky="w", pady=(12, 0))
 
-        recent_group = QGroupBox("Recent Projects")
-        recent_layout = QVBoxLayout(recent_group)
-        recent_layout.setContentsMargins(16, 12, 16, 12)
-        self.recent_list = QListWidget()
-        self.recent_list.itemActivated.connect(self._handle_recent_activation)
-        self.recent_list.addItem(self._recent_placeholder)
-        self._recent_placeholder.setFlags(Qt.ItemFlag.NoItemFlags)
-        recent_layout.addWidget(self.recent_list)
-        layout.addWidget(recent_group, 1)
+        self.columnconfigure(0, weight=1)
+        self.columnconfigure(1, weight=1)
 
-    def set_templates(self, templates: Iterable[str]) -> None:
-        self.template_picker.clear()
-        self.template_picker.addItems(list(templates))
-        if self.template_picker.count() > 0:
-            self.template_selected.emit(self.template_picker.currentText())
+        name_entry.focus()
 
-    def set_recent_projects(self, projects: Iterable[str]) -> None:
-        self.recent_list.clear()
-        project_list = list(projects)
-        if not project_list:
-            self.recent_list.addItem(self._recent_placeholder)
-            self._recent_placeholder.setFlags(Qt.ItemFlag.NoItemFlags)
+    def _handle_create(self) -> None:
+        self.status_var.set("")
+        try:
+            result = create_project(
+                project_name=self.project_name_var.get(),
+                base_path=self.location_var.get(),
+            )
+        except ValueError as exc:
+            self.status_var.set(str(exc))
             return
 
-        for project in project_list:
-            item = QListWidgetItem(project)
-            item.setToolTip(project)
-            self.recent_list.addItem(item)
-
-    def refresh_recent_projects(self) -> None:
-        self.set_recent_projects(settings_db.get_recent_projects())
-
-    def record_recent_project(self, project_path: str) -> None:
-        settings_db.add_recent_project(project_path)
-        self.refresh_recent_projects()
-
-    def _handle_recent_activation(self, item: QListWidgetItem) -> None:
-        if item.flags() == Qt.ItemFlag.NoItemFlags:
-            return
-        self.record_recent_project(item.text())
-        self.recent_project_requested.emit(item.text())
+        self.status_var.set(f"Project created at: {result.path}")

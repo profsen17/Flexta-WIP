@@ -1,28 +1,29 @@
 from __future__ import annotations
 
-from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QMainWindow
+import tkinter as tk
+from tkinter import ttk
 
-from .widgets.startup_widget import StartupWidget
+from flexta.ui.widgets import StartupWidget
 
 
-class MainWindow(QMainWindow):
-    create_project_requested = Signal()
-    open_project_requested = Signal()
-    template_selected = Signal(str)
-    recent_project_requested = Signal(str)
+class MainWindow(tk.Tk):
+    def __init__(self) -> None:
+        super().__init__()
+        self.title("Flexta")
+        self.geometry("720x480")
+        self.minsize(640, 420)
 
-    def __init__(self, parent=None) -> None:
-        super().__init__(parent)
-        self.setWindowTitle("Flexta")
+        self._configure_style()
+        self._build()
 
-        self.startup_widget = StartupWidget(self)
-        self.setCentralWidget(self.startup_widget)
+    def _configure_style(self) -> None:
+        style = ttk.Style(self)
+        if "clam" in style.theme_names():
+            style.theme_use("clam")
 
-        self.startup_widget.create_project_requested.connect(self.create_project_requested)
-        self.startup_widget.open_project_requested.connect(self.open_project_requested)
-        self.startup_widget.template_selected.connect(self.template_selected)
-        self.startup_widget.recent_project_requested.connect(self.recent_project_requested)
+    def _build(self) -> None:
+        container = ttk.Frame(self, padding=12)
+        container.pack(fill="both", expand=True)
 
-    def record_recent_project(self, project_path: str) -> None:
-        self.startup_widget.record_recent_project(project_path)
+        startup = StartupWidget(container)
+        startup.pack(fill="both", expand=True)
