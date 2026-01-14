@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QSizePolicy,
 )
 
+from flexta.database import settings_db
 
 class StartupWidget(QWidget):
     create_project_requested = Signal()
@@ -29,6 +30,7 @@ class StartupWidget(QWidget):
         self._show_open_button = show_open_button
         self._recent_placeholder = QListWidgetItem("No recent projects")
         self._build_ui()
+        self.refresh_recent_projects()
 
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -95,7 +97,15 @@ class StartupWidget(QWidget):
             item.setToolTip(project)
             self.recent_list.addItem(item)
 
+    def refresh_recent_projects(self) -> None:
+        self.set_recent_projects(settings_db.get_recent_projects())
+
+    def record_recent_project(self, project_path: str) -> None:
+        settings_db.add_recent_project(project_path)
+        self.refresh_recent_projects()
+
     def _handle_recent_activation(self, item: QListWidgetItem) -> None:
         if item.flags() == Qt.ItemFlag.NoItemFlags:
             return
+        self.record_recent_project(item.text())
         self.recent_project_requested.emit(item.text())
