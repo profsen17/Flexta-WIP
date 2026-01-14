@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from flexta.database import settings_db
 from flexta.utils.validation import does_folder_exist, is_empty_name, is_invalid_path
 
 
@@ -73,9 +74,15 @@ class CreateProjectDialog(QDialog):
         layout.addWidget(button_box)
 
     def _browse_directory(self) -> None:
-        directory = QFileDialog.getExistingDirectory(self, "Select Project Directory")
+        start_dir = settings_db.get_last_used_folder()
+        directory = QFileDialog.getExistingDirectory(
+            self,
+            "Select Project Directory",
+            start_dir or "",
+        )
         if directory:
             self.directory_input.setText(directory)
+            settings_db.set_last_used_folder(directory)
 
     def _load_templates(self) -> Iterable[str]:
         if not self._templates_dir.exists():
@@ -104,6 +111,8 @@ class CreateProjectDialog(QDialog):
         project_path.mkdir(parents=True, exist_ok=False)
         self._seed_project(project_path, self.template_picker.currentText())
         self.project_created.emit(str(project_path))
+        settings_db.add_recent_project(str(project_path))
+        settings_db.set_last_used_folder(str(project_path.parent))
         self.accept()
 
     def _seed_project(self, project_path: Path, template_name: str) -> None:

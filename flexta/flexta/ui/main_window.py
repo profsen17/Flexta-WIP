@@ -23,3 +23,6 @@ class MainWindow(QMainWindow):
         self.startup_widget.open_project_requested.connect(self.open_project_requested)
         self.startup_widget.template_selected.connect(self.template_selected)
         self.startup_widget.recent_project_requested.connect(self.recent_project_requested)
+
+    def record_recent_project(self, project_path: str) -> None:
+        self.startup_widget.record_recent_project(project_path)
